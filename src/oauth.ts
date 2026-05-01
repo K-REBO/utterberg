@@ -1,0 +1,96 @@
+import { CLIENT_ID, UTTERBERG_ORIGIN } from './utterberg-config';
+
+export const token = { value: null as null | string };
+
+const TOKEN_KEY = 'utterberg-token';
+const VERIFIER_KEY = 'utterberg-pkce-verifier';
+const REDIRECT_KEY = 'utterberg-redirect-after-auth';
+
+// ---- PKCE helpers ----
+
+function generateVerifier(): string {
+  const arr = new Uint8Array(32);
+  crypto.getRandomValues(arr);
+  return btoa(String.fromCharCode(...arr))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+}
+
+async function generateChallenge(verifier: string): Promise<string> {
+  const data = new TextEncoder().encode(verifier);
+  const hash = await crypto.subtle.digest('SHA-256', data);
+  return btoa(String.fromCharCode(...new Uint8Array(hash)))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+}
+
+// ---- Public API ----
+
+// "Sign in with Codeberg" ボタン用。クリック前にPKCEパラメータを生成してlocalStorageに保存する。
+export async function getLoginUrl(redirectBackUrl: string): Promise<string> {
+  const verifier = generateVerifier();
+  const challenge = await generateChallenge(verifier);
+  localStorage.setItem(VERIFIER_KEY, verifier);
+  localStorage.setItem(REDIRECT_KEY, redirectBackUrl);
+
+  const params = new URLSearchParams({
+    client_id: CLIENT_ID,
+    redirect_uri: `${UTTERBERG_ORIGIN}/utterberg.html`,
+    response_type: 'code',
+    scope: 'write:issue',
+    code_challenge: challenge,
+    code_challenge_method: 'S256'
+  });
+  return `https://codeberg.org/login/oauth/authorize?${params}`;
+}
+
+// utterberg.html がロードされたとき、URLに ?code= があれば呼ばれる。
+// トークンを取得してlocalStorageに保存し、元のページへリダイレクトする。
+export async function handleOAuthCallback(code: string): Promise<void> {
+  const verifier = localStorage.getItem(VERIFIER_KEY);
+  const redirectBack = localStorage.getItem(REDIRECT_KEY);
+  localStorage.removeItem(VERIFIER_KEY);
+  localStorage.removeItem(REDIRECT_KEY);
+
+  if (!verifier) return;
+
+  const response = await fetch('https://codeberg.org/login/oauth/access_token', {
+    method: 'POST',
+    mode: 'cors',
+    headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      client_id: CLIENT_ID,
+      code,
+      redirect_uri: `${UTTERBERG_ORIGIN}/utterberg.html`,
+      code_verifier: verifier,
+      grant_type: 'authorization_code'
+    })
+  });
+
+  if (response.ok) {
+    const data = await response.json();
+    if (data.access_token) {
+      localStorage.setItem(TOKEN_KEY, data.access_token);
+      token.value = data.access_token;
+    }
+  }
+
+  // OAuthが完了したらブログページへ戻る
+  if (redirectBack) {
+    window.location.href = redirectBack;
+  }
+}
+
+// 初期化時にlocalStorageからトークンを復元する。
+export function loadToken(): Promise<string | null> {
+  if (token.value) return Promise.resolve(token.value);
+  const stored = localStorage.getItem(TOKEN_KEY);
+  if (stored) {
+    token.value = stored;
+    return Promise.resolve(stored);
+  }
+  return Promise.resolve(null);
+}
+
+export function clearToken(): void {
+  token.value = null;
+  localStorage.removeItem(TOKEN_KEY);
+}
