@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>utterberg テスト</title>
+  <style>
+    body { font-family: sans-serif; max-width: 760px; margin: 40px auto; padding: 0 20px; }
+    .panel { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 6px; padding: 16px; margin-bottom: 20px; }
+    .panel input[type=password] { width: 100%; padding: 6px 12px; font-family: monospace; box-sizing: border-box; }
+    .panel button { margin-top: 8px; padding: 6px 16px; cursor: pointer; }
+    .status { margin-top: 8px; font-size: 14px; }
+    .ok { color: #1a7f37; } .warn { color: #9a6700; } .err { color: #cf222e; }
+    .utterberg-frame { width: 100%; border: 0; min-height: 200px; display: block; }
+    #diag { font-size: 13px; font-family: monospace; white-space: pre; }
+  </style>
+</head>
+<body>
+  <h1>utterberg 動作テスト</h1>
+
+  <div class="panel">
+    <strong>① トークン設定（PAT — OAuthをスキップして直接テスト）</strong>
+    <p style="font-size:13px;color:#57606a;margin:4px 0 8px">
+      Codeberg の Personal Access Token をここに貼り付けてください。<br>
+      ※ サインインボタンを押す前に必ず設定してください。
+    </p>
+    <input type="password" id="token-input" placeholder="Codebergのアクセストークン..." />
+    <br>
+    <button onclick="setToken()">設定してウィジェットをリロード</button>
+    <button onclick="clearToken()" style="margin-left:8px">クリア</button>
+    <div class="status" id="token-status"></div>
+  </div>
+
+  <div class="panel">
+    <strong>② API診断</strong>
+    <button onclick="runDiag()" style="margin-left:8px">実行</button>
+    <div id="diag" class="status"></div>
+  </div>
+
+  <h2>③ コメント欄</h2>
+  <div id="utterberg-container"></div>
+
+  <script>
+    const BASE = location.origin;
+
+    function getParams() {
+      return new URLSearchParams({
+        repo: 'bido/test',
+        'issue-term': 'test-page',
+        theme: 'github-light',
+        origin: BASE,
+        url: location.href,
+        title: 'utterberg テスト',
+        description: '',
+        'og:title': ''
+      });
+    }
+
+    function createFrame() {
+      const container = document.getElementById('utterberg-container');
+      container.innerHTML = '';
+      const iframe = document.createElement('iframe');
+      iframe.className = 'utterberg-frame';
+      iframe.title = 'Comments';
+      iframe.scrolling = 'no';
+      iframe.src = `${BASE}/utterberg.html?${getParams()}`;
+      container.appendChild(iframe);
+      window.addEventListener('message', event => {
+        if (event.origin !== BASE) return;
+        const d = event.data;
+        if (d && d.type === 'resize' && d.height) iframe.style.height = `${d.height}px`;
+      });
+    }
+
+    function updateStatus() {
+      const t = localStorage.getItem('utterberg-token');
+      const el = document.getElementById('token-status');
+      if (t) {
+        el.className = 'status ok';
+        el.textContent = `✅ 設定済み (${t.slice(0,8)}...)`;
+      } else {
+        el.className = 'status warn';
+        el.textContent = '⚠️ 未設定 — サインインボタンは押さないでください';
+      }
+    }
+
+    function setToken() {
+      const val = document.getElementById('token-input').value.trim();
+      if (!val) return;
+      localStorage.setItem('utterberg-token', val);
+      document.getElementById('token-input').value = '';
+      updateStatus();
+      createFrame();
+    }
+
+    function clearToken() {
+      localStorage.removeItem('utterberg-token');
+      updateStatus();
+      createFrame();
+    }
+
+    async function runDiag() {
+      const el = document.getElementById('diag');
+      const token = localStorage.getItem('utterberg-token');
+      const lines = [];
+
+      // 1. トークン確認
+      lines.push(`token: ${token ? token.slice(0,8)+'...' : '(なし)'}`);
+
+      const headers = { 'Accept': 'application/json' };
+      if (token) headers['Authorization'] = `token ${token}`;
+
+      // 2. /user
+      try {
+        const r = await fetch('https://codeberg.org/api/v1/user', { headers });
+        const j = await r.json();
+        lines.push(`GET /user → ${r.status} ${r.ok ? '✅ login='+j.login : '❌ '+j.message}`);
+      } catch(e) { lines.push(`GET /user → ❌ ${e.message}`); }
+
+      // 3. Issue検索
+      try {
+        const q = 'test-page';
+        const r = await fetch(
+          `https://codeberg.org/api/v1/repos/bido/test/issues?type=issues&state=open&q=${encodeURIComponent(q)}&limit=5`,
+          { headers }
+        );
+        const j = await r.json();
+        lines.push(`GET /repos/bido/test/issues → ${r.status} ${r.ok ? '✅ '+j.length+'件' : '❌ '+j.message}`);
+      } catch(e) { lines.push(`GET /repos/bido/test/issues → ❌ ${e.message}`); }
+
+      el.textContent = lines.join('\n');
+    }
+
+    updateStatus();
+    createFrame();
+  </script>
+</body>
+</html>

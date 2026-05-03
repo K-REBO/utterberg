@@ -17,7 +17,7 @@
   },
   "scripts": {
     "preparcel": "rm -rf dist;mkdir dist",
-    "parcel": "parcel $RUN src/index.html src/utterberg.html src/client.ts src/stylesheets/themes/*/{index,utterances}.scss",
+    "parcel": "parcel $RUN src/index.html src/utterberg.html src/test.html src/client.ts src/stylesheets/themes/*/{index,utterances}.scss",
     "build": "RUN=build npm run parcel --",
     "start": "RUN=serve npm run parcel -- --port 4000"
   },

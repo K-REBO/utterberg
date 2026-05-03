@@ -1,7 +1,15 @@
 import repoRegex from './repo-regex';
 
 function readPageAttributes() {
-  const params = Object.fromEntries(new URL(location.href).searchParams)
+  const params = Object.fromEntries(new URL(location.href).searchParams);
+
+  // OAuthコールバック時（?code= のみ）はダミーを返す。utterberg.ts側でハンドル。
+  if (params.code && !params.repo) {
+    return {
+      owner: '', repo: '', issueTerm: null as string | null, issueNumber: null as number | null,
+      origin: '', url: '', title: '', description: '', label: '', theme: 'github-light'
+    };
+  }
 
   let issueTerm: string | null = null;
   let issueNumber: number | null = null;

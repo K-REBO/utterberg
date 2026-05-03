@@ -24,6 +24,9 @@ function codebergRequest(relativeUrl: string, init?: RequestInit) {
   init.cache = 'no-cache';
   const request = new Request(CODEBERG_API + relativeUrl, init);
   request.headers.set('Accept', 'application/json');
+  if (init.body) {
+    request.headers.set('Content-Type', 'application/json');
+  }
   if (token.value !== null) {
     request.headers.set('Authorization', `token ${token.value}`);
   }
@@ -132,7 +135,7 @@ export function loadJsonFile<T>(path: string): Promise<T> {
 }
 
 export function renderMarkdown(text: string): Promise<string> {
-  const body = JSON.stringify({ text, mode: 'gfm', context: `${owner}/${repo}`, wiki: false });
+  const body = JSON.stringify({ text, mode: 'comment', context: `${owner}/${repo}`, wiki: false });
   return codebergFetch(codebergRequest('markdown', { method: 'POST', body }))
     .then(response => response.text());
 }
