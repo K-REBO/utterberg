@@ -3,9 +3,6 @@ import { CLIENT_ID, UTTERBERG_ORIGIN } from './utterberg-config';
 export const token = { value: null as null | string };
 
 const TOKEN_KEY = 'utterberg-token';
-const VERIFIER_KEY = 'utterberg-pkce-verifier';
-const REDIRECT_KEY = 'utterberg-redirect-after-auth';
-const CLIENT_ID_KEY = 'utterberg-client-id';
 
 // ---- PKCE helpers ----
 
@@ -23,15 +20,30 @@ async function generateChallenge(verifier: string): Promise<string> {
     .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 }
 
+function encodeState(obj: object): string {
+  return btoa(JSON.stringify(obj))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+}
+
+function decodeState(s: string): Record<string, string> | null {
+  try {
+    // base64url → base64
+    const padded = s.replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(atob(padded));
+  } catch {
+    return null;
+  }
+}
+
 // ---- Public API ----
 
+// OAuthのstateパラメータにverifier/redirectBack/clientIdを乗せる
+// → localStorage不要 → サードパーティiframeのStorageパーティショニング問題を回避
 export async function getLoginUrl(redirectBackUrl: string): Promise<string> {
   const verifier = generateVerifier();
   const challenge = await generateChallenge(verifier);
-  // コールバック時に URL パラメータから読めなくなる値を localStorage に退避
-  localStorage.setItem(VERIFIER_KEY, verifier);
-  localStorage.setItem(REDIRECT_KEY, redirectBackUrl);
-  localStorage.setItem(CLIENT_ID_KEY, CLIENT_ID);
+
+  const state = encodeState({ v: verifier, r: redirectBackUrl, c: CLIENT_ID });
 
   const params = new URLSearchParams({
     client_id: CLIENT_ID,
@@ -39,26 +51,24 @@ export async function getLoginUrl(redirectBackUrl: string): Promise<string> {
     response_type: 'code',
     scope: 'write:issue',
     code_challenge: challenge,
-    code_challenge_method: 'S256'
+    code_challenge_method: 'S256',
+    state
   });
   return `https://codeberg.org/login/oauth/authorize?${params}`;
 }
 
 export async function handleOAuthCallback(code: string): Promise<void> {
-  const verifier = localStorage.getItem(VERIFIER_KEY);
-  const redirectBack = localStorage.getItem(REDIRECT_KEY);
-  // コールバック時は URL に client-id がないため localStorage から復元
-  const clientId = localStorage.getItem(CLIENT_ID_KEY) || CLIENT_ID;
+  const urlParams = new URL(location.href).searchParams;
+  const stateParam = urlParams.get('state');
+  const state = stateParam ? decodeState(stateParam) : null;
 
-  localStorage.removeItem(VERIFIER_KEY);
-  localStorage.removeItem(REDIRECT_KEY);
-  localStorage.removeItem(CLIENT_ID_KEY);
+  const verifier = state?.v ?? '';
+  const redirectBack = state?.r ?? '';
+  const clientId = state?.c ?? CLIENT_ID;
 
   try {
-    if (!verifier) {
-      console.error('[utterberg] PKCE verifier not found in localStorage');
-    } else if (!clientId) {
-      console.error('[utterberg] client_id not found');
+    if (!verifier || !clientId) {
+      console.error('[utterberg] OAuth state missing:', { verifier: !!verifier, clientId: !!clientId });
     } else {
       const response = await fetch('https://codeberg.org/login/oauth/access_token', {
         method: 'POST',
@@ -90,13 +100,10 @@ export async function handleOAuthCallback(code: string): Promise<void> {
   } catch (e) {
     console.error('[utterberg] token exchange error:', e);
   } finally {
-    // トークン取得成否に関わらず元のページへ戻る
-    if (redirectBack && redirectBack !== 'null') {
-      window.location.href = redirectBack;
-    } else {
-      // フォールバック: utterberg のルートに戻る
-      window.location.href = UTTERBERG_ORIGIN + '/';
-    }
+    // 元のページへ戻る（失敗時もリダイレクト）
+    window.location.href = (redirectBack && redirectBack !== 'null')
+      ? redirectBack
+      : UTTERBERG_ORIGIN + '/';
   }
 }
 
