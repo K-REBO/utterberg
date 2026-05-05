@@ -5,6 +5,7 @@ export const token = { value: null as null | string };
 const TOKEN_KEY = 'utterberg-token';
 const VERIFIER_KEY = 'utterberg-pkce-verifier';
 const REDIRECT_KEY = 'utterberg-redirect-after-auth';
+const CLIENT_ID_KEY = 'utterberg-client-id';
 
 // ---- PKCE helpers ----
 
@@ -27,8 +28,10 @@ async function generateChallenge(verifier: string): Promise<string> {
 export async function getLoginUrl(redirectBackUrl: string): Promise<string> {
   const verifier = generateVerifier();
   const challenge = await generateChallenge(verifier);
+  // コールバック時に URL パラメータから読めなくなる値を localStorage に退避
   localStorage.setItem(VERIFIER_KEY, verifier);
   localStorage.setItem(REDIRECT_KEY, redirectBackUrl);
+  localStorage.setItem(CLIENT_ID_KEY, CLIENT_ID);
 
   const params = new URLSearchParams({
     client_id: CLIENT_ID,
@@ -44,19 +47,25 @@ export async function getLoginUrl(redirectBackUrl: string): Promise<string> {
 export async function handleOAuthCallback(code: string): Promise<void> {
   const verifier = localStorage.getItem(VERIFIER_KEY);
   const redirectBack = localStorage.getItem(REDIRECT_KEY);
+  // コールバック時は URL に client-id がないため localStorage から復元
+  const clientId = localStorage.getItem(CLIENT_ID_KEY) || CLIENT_ID;
+
   localStorage.removeItem(VERIFIER_KEY);
   localStorage.removeItem(REDIRECT_KEY);
+  localStorage.removeItem(CLIENT_ID_KEY);
 
   try {
     if (!verifier) {
       console.error('[utterberg] PKCE verifier not found in localStorage');
+    } else if (!clientId) {
+      console.error('[utterberg] client_id not found');
     } else {
       const response = await fetch('https://codeberg.org/login/oauth/access_token', {
         method: 'POST',
         mode: 'cors',
         headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          client_id: CLIENT_ID,
+          client_id: clientId,
           code,
           redirect_uri: `${UTTERBERG_ORIGIN}/utterberg.html`,
           code_verifier: verifier,
@@ -84,6 +93,9 @@ export async function handleOAuthCallback(code: string): Promise<void> {
     // トークン取得成否に関わらず元のページへ戻る
     if (redirectBack && redirectBack !== 'null') {
       window.location.href = redirectBack;
+    } else {
+      // フォールバック: utterberg のルートに戻る
+      window.location.href = UTTERBERG_ORIGIN + '/';
     }
   }
 }
