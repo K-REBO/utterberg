@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>utterberg 埋め込みデモ</title>
+  <style>
+    body { font-family: sans-serif; max-width: 760px; margin: 40px auto; padding: 0 20px; }
+    .note { background: #fff8c5; border: 1px solid #d4a72c; border-radius: 6px; padding: 12px; font-size: 14px; margin-bottom: 32px; }
+  </style>
+</head>
+<body>
+  <h1>テストブログ記事</h1>
+  <p>これは utterberg の埋め込みデモです。</p>
+  <p>utterances と同じように &lt;script&gt; タグ1行で埋め込めます。</p>
+
+  <div class="note">
+    ⚠️ ローカルテスト時はトークンを事前に設定してください：<br>
+    <a href="http://localhost:4000/test.html">http://localhost:4000/test.html</a> → ① トークン設定
+  </div>
+
+  <h2>コメント</h2>
+
+  <script src="http://localhost:4000/client.js"
+          repo="bido/test"
+          issue-term="pathname"
+          client-id="a8348e11-833b-4553-ad8c-f597d7362767"
+          theme="github-light"
+          crossorigin="anonymous"
+          async>
+  </script>
+</body>
+</html>

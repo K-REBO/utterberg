@@ -25,14 +25,14 @@
     </p>
     <input type="password" id="token-input" placeholder="Codebergのアクセストークン..." />
     <br>
-    <button onclick="setToken()">設定してウィジェットをリロード</button>
-    <button onclick="clearToken()" style="margin-left:8px">クリア</button>
+    <button type="button" id="btn-set-token">設定してウィジェットをリロード</button>
+    <button type="button" id="btn-clear-token" style="margin-left:8px">クリア</button>
     <div class="status" id="token-status"></div>
   </div>
 
   <div class="panel">
     <strong>② API診断</strong>
-    <button onclick="runDiag()" style="margin-left:8px">実行</button>
+    <button type="button" id="btn-diag" style="margin-left:8px">実行</button>
     <div id="diag" class="status"></div>
   </div>
 
@@ -117,6 +117,7 @@
       } catch(e) { lines.push(`GET /user → ❌ ${e.message}`); }
 
       // 3. Issue検索
+      let issueNumber = null;
       try {
         const q = 'test-page';
         const r = await fetch(
@@ -125,10 +126,38 @@
         );
         const j = await r.json();
         lines.push(`GET /repos/bido/test/issues → ${r.status} ${r.ok ? '✅ '+j.length+'件' : '❌ '+j.message}`);
+        if (r.ok && j.length > 0) {
+          issueNumber = j[0].number;
+          lines.push(`  → issue #${issueNumber}: "${j[0].title}"`);
+        }
       } catch(e) { lines.push(`GET /repos/bido/test/issues → ❌ ${e.message}`); }
+
+      // 4. コメント投稿テスト (issue が存在する場合)
+      if (issueNumber && token) {
+        try {
+          const r = await fetch(
+            `https://codeberg.org/api/v1/repos/bido/test/issues/${issueNumber}/comments`,
+            {
+              method: 'POST',
+              headers: { ...headers, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ body: 'utterberg 診断テスト' })
+            }
+          );
+          const j = await r.json();
+          lines.push(`POST /issues/${issueNumber}/comments → ${r.status} ${r.ok ? '✅ id='+j.id : '❌ '+JSON.stringify(j)}`);
+        } catch(e) { lines.push(`POST /issues/${issueNumber}/comments → ❌ ${e.message}`); }
+      } else if (!issueNumber) {
+        lines.push('コメント投稿テスト → スキップ (issue未作成)');
+      } else {
+        lines.push('コメント投稿テスト → スキップ (トークン未設定)');
+      }
 
       el.textContent = lines.join('\n');
     }
+
+    document.getElementById('btn-set-token').addEventListener('click', setToken);
+    document.getElementById('btn-clear-token').addEventListener('click', clearToken);
+    document.getElementById('btn-diag').addEventListener('click', runDiag);
 
     updateStatus();
     createFrame();

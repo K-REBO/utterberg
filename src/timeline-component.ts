@@ -54,7 +54,7 @@ export class TimelineComponent {
     const component = new CommentComponent(
       comment,
       this.user ? this.user.login : null,
-      this.issue!.locked);
+      this.issue?.locked ?? false);
 
     const index = this.timeline.findIndex(x => x.comment.id >= comment.id);
     if (index === -1) {

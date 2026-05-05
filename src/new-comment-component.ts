@@ -1,5 +1,6 @@
 import { pageAttributes as page } from './page-attributes';
-import { User, renderMarkdown } from './codeberg';
+import { User } from './codeberg';
+import { marked } from 'marked';
 import { scheduleMeasure } from './measure';
 import { processRenderedMarkdown } from './comment-component';
 import { getRepoConfig } from './repo-config';
@@ -134,12 +135,11 @@ export class NewCommentComponent {
     if (isWhitespace) {
       this.preview.textContent = nothingToPreview;
     } else {
-      this.preview.textContent = 'Loading preview...';
-      this.renderTimeout = setTimeout(
-        () => renderMarkdown(text).then(html => this.preview.innerHTML = html)
-          .then(() => processRenderedMarkdown(this.preview))
-          .then(scheduleMeasure),
-        500);
+      this.renderTimeout = setTimeout(() => {
+        this.preview.innerHTML = marked.parse(text) as string;
+        processRenderedMarkdown(this.preview);
+        scheduleMeasure();
+      }, 500);
     }
   }
 
@@ -151,7 +151,7 @@ export class NewCommentComponent {
     this.submitting = true;
     this.textarea.disabled = true;
     this.submitButton.disabled = true;
-    await this.submit(this.textarea.value).catch(() => 0);
+    await this.submit(this.textarea.value).catch(e => console.error('[utterberg] submit failed:', e));
     this.submitting = false;
     this.textarea.disabled = !this.user;
     this.textarea.value = '';
@@ -184,8 +184,8 @@ export class NewCommentComponent {
     scheduleMeasure();
   }
 
-  private handleKeyDown = ({ which, ctrlKey }: KeyboardEvent) => {
-    if (which === 13 && ctrlKey && !this.submitButton.disabled) {
+  private handleKeyDown = ({ key, ctrlKey }: KeyboardEvent) => {
+    if (key === 'Enter' && ctrlKey && !this.submitButton.disabled) {
       this.form.dispatchEvent(new CustomEvent('submit'));
     }
   }

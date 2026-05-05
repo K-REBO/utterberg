@@ -24,7 +24,6 @@ async function generateChallenge(verifier: string): Promise<string> {
 
 // ---- Public API ----
 
-// "Sign in with Codeberg" ボタン用。クリック前にPKCEパラメータを生成してlocalStorageに保存する。
 export async function getLoginUrl(redirectBackUrl: string): Promise<string> {
   const verifier = generateVerifier();
   const challenge = await generateChallenge(verifier);
@@ -42,44 +41,53 @@ export async function getLoginUrl(redirectBackUrl: string): Promise<string> {
   return `https://codeberg.org/login/oauth/authorize?${params}`;
 }
 
-// utterberg.html がロードされたとき、URLに ?code= があれば呼ばれる。
-// トークンを取得してlocalStorageに保存し、元のページへリダイレクトする。
 export async function handleOAuthCallback(code: string): Promise<void> {
   const verifier = localStorage.getItem(VERIFIER_KEY);
   const redirectBack = localStorage.getItem(REDIRECT_KEY);
   localStorage.removeItem(VERIFIER_KEY);
   localStorage.removeItem(REDIRECT_KEY);
 
-  if (!verifier) return;
+  try {
+    if (!verifier) {
+      console.error('[utterberg] PKCE verifier not found in localStorage');
+    } else {
+      const response = await fetch('https://codeberg.org/login/oauth/access_token', {
+        method: 'POST',
+        mode: 'cors',
+        headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          client_id: CLIENT_ID,
+          code,
+          redirect_uri: `${UTTERBERG_ORIGIN}/utterberg.html`,
+          code_verifier: verifier,
+          grant_type: 'authorization_code'
+        })
+      });
 
-  const response = await fetch('https://codeberg.org/login/oauth/access_token', {
-    method: 'POST',
-    mode: 'cors',
-    headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      client_id: CLIENT_ID,
-      code,
-      redirect_uri: `${UTTERBERG_ORIGIN}/utterberg.html`,
-      code_verifier: verifier,
-      grant_type: 'authorization_code'
-    })
-  });
-
-  if (response.ok) {
-    const data = await response.json();
-    if (data.access_token) {
-      localStorage.setItem(TOKEN_KEY, data.access_token);
-      token.value = data.access_token;
+      if (response.ok) {
+        const data = await response.json();
+        if (data.access_token) {
+          localStorage.setItem(TOKEN_KEY, data.access_token);
+          token.value = data.access_token;
+          console.log('[utterberg] token acquired');
+        } else {
+          console.error('[utterberg] token response:', data);
+        }
+      } else {
+        const text = await response.text().catch(() => '');
+        console.error('[utterberg] token exchange failed:', response.status, text);
+      }
     }
-  }
-
-  // OAuthが完了したらブログページへ戻る
-  if (redirectBack) {
-    window.location.href = redirectBack;
+  } catch (e) {
+    console.error('[utterberg] token exchange error:', e);
+  } finally {
+    // トークン取得成否に関わらず元のページへ戻る
+    if (redirectBack && redirectBack !== 'null') {
+      window.location.href = redirectBack;
+    }
   }
 }
 
-// 初期化時にlocalStorageからトークンを復元する。
 export function loadToken(): Promise<string | null> {
   if (token.value) return Promise.resolve(token.value);
   const stored = localStorage.getItem(TOKEN_KEY);

@@ -20,7 +20,9 @@ function measure() {
   }
   lastHeight = height;
   const message: ResizeMessage = { type: 'resize', height };
-  parent.postMessage(message, hostOrigin);
+  // file:// で開いた場合 origin が 'null' になるので '*' にフォールバック
+  const target = hostOrigin && hostOrigin !== 'null' ? hostOrigin : '*';
+  parent.postMessage(message, target);
 }
 
 let lastMeasure = 0;

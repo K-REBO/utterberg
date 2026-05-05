@@ -1,5 +1,6 @@
 import { token } from './oauth';
 import { decodeBase64UTF8 } from './encoding';
+import { marked } from 'marked';
 
 const CODEBERG_API = 'https://codeberg.org/api/v1/';
 const BRANCH = 'main';
@@ -80,7 +81,7 @@ export function loadCommentsPage(issueNumber: number, page: number): Promise<Iss
       if (!response.ok) throw new Error('Error fetching comments.');
       return response.json();
     })
-    .then(comments => Promise.all(comments.map(adaptComment)));
+    .then(comments => comments.map(adaptComment));
 }
 
 export function loadUser(): Promise<User | null> {
@@ -134,11 +135,6 @@ export function loadJsonFile<T>(path: string): Promise<T> {
     });
 }
 
-export function renderMarkdown(text: string): Promise<string> {
-  const body = JSON.stringify({ text, mode: 'comment', context: `${owner}/${repo}`, wiki: false });
-  return codebergFetch(codebergRequest('markdown', { method: 'POST', body }))
-    .then(response => response.text());
-}
 
 export async function toggleReaction(reactionUrl: string, content: ReactionID) {
   // reactionUrl は "/repos/owner/repo/issues/N/reactions" 形式
@@ -258,10 +254,9 @@ function adaptIssue(fi: ForgejoIssue): Issue {
   };
 }
 
-async function adaptComment(fc: ForgejoComment): Promise<IssueComment> {
+function adaptComment(fc: ForgejoComment): IssueComment {
   const reactionUrl = `${CODEBERG_API}repos/${owner}/${repo}/issues/comments/${fc.id}/reactions`;
-  // Forgejo returns markdown; render via API
-  const body_html = await renderMarkdown(fc.body).catch(() => fc.body);
+  const body_html = marked.parse(fc.body) as string;
   return {
     id: fc.id,
     url: `${CODEBERG_API}repos/${owner}/${repo}/issues/comments/${fc.id}`,
