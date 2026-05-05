@@ -58,7 +58,8 @@ document.head.insertAdjacentHTML(
     }
   </style>`);
 
-const utterbergOrigin = script.src.match(/^https?:\/\/[^/]+/)![0];
+// https://K-REBO.github.io/utterberg/client.js → https://K-REBO.github.io/utterberg
+const utterbergOrigin = script.src.replace(/\/client\.js.*$/, '');
 const frameUrl = `${utterbergOrigin}/utterberg.html`;
 script.insertAdjacentHTML(
   'afterend',
