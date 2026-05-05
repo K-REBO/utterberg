@@ -1,136 +1,137 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ja">
   <head>
-    <title>utterberg</title>
-    <meta
-      name="description"
-      content="A lightweight commenting system using Codeberg issues."
-    />
+    <meta charset="UTF-8" />
+    <title>utterberg — Codebergで動くコメントウィジェット</title>
+    <meta name="description" content="utterancesのCodeberg版。バックエンド不要のPKCE OAuthでCodeberg Issueをコメントストアとして使う軽量ウィジェット。" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="preconnect" href="https://codeberg.org" />
-    <if condition="NODE_ENV === 'production'">
-      <link
-        id="theme-stylesheet"
-        rel="stylesheet"
-        href="https://utterberg.dev/stylesheets/themes/github-light/index.css"
-      />
-    </if>
-    <else>
-      <link
-        id="theme-stylesheet"
-        rel="stylesheet"
-        href="http://localhost:4000/stylesheets/themes/github-light/index.css"
-      />
-    </else>
-    <link
-      rel="apple-touch-icon"
-      sizes="180x180"
-      href="./icons/apple-touch-icon.png"
-    />
-    <link
-      rel="icon"
-      type="image/png"
-      sizes="32x32"
-      href="./icons/favicon-32x32.png"
-    />
-    <link
-      rel="icon"
-      type="image/png"
-      sizes="16x16"
-      href="./icons/favicon-16x16.png"
-    />
-    <link rel="manifest" href="./icons/manifest.webmanifest" />
-    <link
-      rel="mask-icon"
-      href="./icons/safari-pinned-tab.svg"
-      color="#4c2889"
-    />
+    <link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="./icons/favicon-16x16.png" />
     <link rel="shortcut icon" href="./icons/favicon.ico" />
     <if condition="NODE_ENV === 'production'">
+      <link id="theme-stylesheet" rel="stylesheet" href="https://utterberg.dev/stylesheets/themes/github-light/index.css" />
       <link rel="canonical" href="https://utterberg.dev" />
     </if>
     <else>
-      <link rel="canonical" href="http://localhost:4000/index.html" />
+      <link id="theme-stylesheet" rel="stylesheet" href="http://localhost:4000/stylesheets/themes/github-light/index.css" />
     </else>
-    <meta name="apple-mobile-web-app-title" content="Utterances" />
-    <meta name="application-name" content="Utterances" />
-    <meta name="msapplication-config" content="icons/browserconfig.xml" />
-    <meta name="theme-color" content="#ffffff" />
-    <meta property="og:title" content="utterances" />
-    <script type="module" src="index.ts"></script>
+    <script type="module" src="./index.ts"></script>
   </head>
   <body>
-    <main class="timeline">
-      <article class="timeline-comment">
-        <a class="avatar" href="https://github.com/utterance" tabindex="-1">
-          <img
-            alt="@utterances"
-            height="44"
-            width="44"
-            src="https://avatars3.githubusercontent.com/u/27908738?v=3&s=88"
-          />
-        </a>
-        <div class="comment">
-          <header class="comment-header">
-            <span class="comment-meta">
-              <a class="text-link" href="https://github.com/utterance">
-                <strong>utterances</strong>
-              </a>
-            </span>
-          </header>
-          <article class="markdown-body" md>
-            <include src="./README.md"></include>
-          </article>
-        </div>
-      </article>
+
+    <header>
+      <h1>utterberg</h1>
+      <p>
+        <a href="https://utteranc.es">utterances</a> の
+        <a href="https://codeberg.org">Codeberg</a> 移植版。<br>
+        Codeberg の Issue をコメントストアとして使う軽量ウィジェットです。
+      </p>
+    </header>
+
+    <main>
+
+      <section>
+        <h2>特徴</h2>
+        <ul>
+          <li>✅ <strong>バックエンド不要</strong> — PKCE OAuth でブラウザのみで完結</li>
+          <li>✅ <strong>Client Secret 不要</strong> — <code>client_id</code> だけで動作（公開しても安全）</li>
+          <li>✅ <strong>第三者コメント対応</strong> — Codebergアカウントがあれば誰でも投稿可能</li>
+          <li>✅ <strong>高速表示</strong> — LocalStorageキャッシュで2回目以降は即時表示</li>
+          <li>✅ <strong>utterancesと同じ使い方</strong> — scriptタグ1行で埋め込み</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>utterancesとの比較</h2>
+        <table>
+          <thead>
+            <tr>
+              <th></th>
+              <th>utterances</th>
+              <th>utterberg</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>ホスティング</td><td>GitHub</td><td>Codeberg（Forgejo）</td></tr>
+            <tr><td>OAuth</td><td>バックエンド必須</td><td>PKCE（ブラウザのみ）</td></tr>
+            <tr><td>Client Secret</td><td>必要</td><td>不要</td></tr>
+            <tr><td>埋め込み</td><td><code>&lt;script&gt;</code> 1行</td><td><code>&lt;script&gt;</code> 1行</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>セットアップ手順</h2>
+        <ol>
+          <li>
+            <strong>コメント用リポジトリを作成</strong><br>
+            Codebergに <strong>public</strong> リポジトリを作り、Issueを有効にします。
+          </li>
+          <li>
+            <strong>OAuth App を登録</strong><br>
+            Codeberg → Settings → Applications → OAuth2 Apps → Create<br>
+            <ul>
+              <li>Application Name: 任意（例: <code>utterberg</code>）</li>
+              <li>Redirect URI: <code>https://あなたのサーバー/utterberg.html</code></li>
+            </ul>
+            発行される <strong>Client ID</strong> をメモします（Client Secret は不要）。
+          </li>
+          <li>
+            <strong>トークンのスコープ</strong>（コメント投稿者に必要）<br>
+            Codebergのトークン設定で <code>read:user</code> と <code>write:issue</code> が必要です。<br>
+            OAuthフローでは自動的に <code>write:issue</code> スコープが要求されます。
+          </li>
+          <li>
+            <strong>ブログに埋め込む</strong><br>
+            下の設定ツールでコードを生成してコピーします。
+          </li>
+        </ol>
+      </section>
+
+      <section>
+        <h2 id="configuration">設定ツール</h2>
+        <p>リポジトリとClient IDを入力すると埋め込みコードが生成されます。</p>
+        <!-- ConfigurationComponent がここに挿入されます -->
+      </section>
+
+      <section>
+        <h2>デモ</h2>
+        <p>このページ自体がutterbergを使っています。下のコメント欄をお試しください。</p>
+        <if condition="NODE_ENV === 'production'">
+          <script
+            src="https://utterberg.dev/client.js"
+            repo="utterberg/utterberg"
+            issue-term="homepage"
+            client-id="[YOUR_CLIENT_ID]"
+            theme="github-light"
+            crossorigin="anonymous"
+            async
+          ></script>
+        </if>
+        <else>
+          <script
+            src="http://localhost:4000/client.js"
+            repo="bido/test"
+            issue-term="utterberg-homepage"
+            client-id="a8348e11-833b-4553-ad8c-f597d7362767"
+            theme="github-light"
+            crossorigin="anonymous"
+            async
+          ></script>
+        </else>
+      </section>
+
     </main>
 
-    <if condition="NODE_ENV === 'production'">
-      <script
-        src="https://utterberg.dev/client.js"
-        repo="utterance/utterances"
-        issue-term="homepage"
-        crossorigin="anonymous"
-        theme="github-light"
-        async
-      ></script>
-    </if>
-    <else>
-      <script
-        src="http://localhost:4000/client.js"
-        repo="jdanyow/utterances-demo"
-        issue-term="pathname"
-        label="💬 comment"
-        crossorigin="anonymous"
-        theme="github-light"
-        async
-      ></script>
-    </else>
+    <footer>
+      <p>
+        <a href="https://codeberg.org/utterberg/utterberg">Codeberg</a> ·
+        MIT License ·
+        utterances ベース
+      </p>
+    </footer>
 
-    <script>
-      (function (i, s, o, g, r, a, m) {
-        i["GoogleAnalyticsObject"] = r;
-        (i[r] =
-          i[r] ||
-          function () {
-            (i[r].q = i[r].q || []).push(arguments);
-          }),
-          (i[r].l = 1 * new Date());
-        (a = s.createElement(o)), (m = s.getElementsByTagName(o)[0]);
-        a.async = 1;
-        a.src = g;
-        m.parentNode.insertBefore(a, m);
-      })(
-        window,
-        document,
-        "script",
-        "https://www.google-analytics.com/analytics.js",
-        "ga"
-      );
-
-      ga("create", "UA-59973368-11", "auto");
-      ga("send", "pageview");
-    </script>
   </body>
 </html>
