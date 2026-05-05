@@ -58,9 +58,11 @@ document.head.insertAdjacentHTML(
     }
   </style>`);
 
-// https://K-REBO.github.io/utterberg/client.js → https://K-REBO.github.io/utterberg
-const utterbergOrigin = script.src.replace(/\/client\.js.*$/, '');
-const frameUrl = `${utterbergOrigin}/utterberg.html`;
+// iframeのsrc用ベースURL（パス込み）: https://K-REBO.github.io/utterberg
+const utterbergBase = script.src.replace(/\/client\.js.*$/, '');
+// postMessage比較用origin（パスなし）: https://K-REBO.github.io
+const utterbergOrigin = new URL(script.src).origin;
+const frameUrl = `${utterbergBase}/utterberg.html`;
 script.insertAdjacentHTML(
   'afterend',
   `<div class="utterberg">
