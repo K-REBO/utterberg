@@ -1,5 +1,9 @@
 import { CLIENT_ID, UTTERBERG_ORIGIN } from './utterberg-config';
 
+// CodebergのトークンエンドポイントはブラウザからのCORSを許可しないため
+// Cloudflare Worker をプロキシとして使用する
+const TOKEN_PROXY = 'https://utterberg-token.holmes10031208.workers.dev';
+
 export const token = { value: null as null | string };
 
 const TOKEN_KEY = 'utterberg-token';
@@ -49,7 +53,7 @@ export async function getLoginUrl(redirectBackUrl: string): Promise<string> {
     client_id: CLIENT_ID,
     redirect_uri: `${UTTERBERG_ORIGIN}/utterberg.html`,
     response_type: 'code',
-    scope: 'write:issue',
+    scope: 'issue',
     code_challenge: challenge,
     code_challenge_method: 'S256',
     state
@@ -70,7 +74,7 @@ export async function handleOAuthCallback(code: string): Promise<void> {
     if (!verifier || !clientId) {
       console.error('[utterberg] OAuth state missing:', { verifier: !!verifier, clientId: !!clientId });
     } else {
-      const response = await fetch('https://codeberg.org/login/oauth/access_token', {
+      const response = await fetch(TOKEN_PROXY, {
         method: 'POST',
         mode: 'cors',
         headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
