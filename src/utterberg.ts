@@ -21,7 +21,7 @@ import { enableReactions, enableSignInToReact } from './reactions';
 
 const t0 = performance.now();
 const log = (msg: string) => console.log(`[utterberg +${Math.round(performance.now() - t0)}ms] ${msg}`);
-// build: 2026-05-09
+const BUILD = '2026-05-09';
 
 const oauthCode = new URL(location.href).searchParams.get('code');
 if (oauthCode) {
