@@ -58,7 +58,9 @@ function readPageAttributes() {
     title: params.title,
     description: params.description,
     label: params.label,
-    theme: params.theme || 'github-light'
+    theme: params.theme || 'github-light',
+    // OAuth後にclient.ts経由でURLパラメータとして渡されるトークン（Storage Partitioning対策）
+    utterbergToken: params['utterberg-token'] || null as string | null
   };
 }
 

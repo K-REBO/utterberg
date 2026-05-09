@@ -18,6 +18,14 @@ if (attrs.theme === preferredThemeId) {
   attrs.theme = preferredTheme;
 }
 
+// OAuth後: URLハッシュにトークンが含まれていればiframeに渡してURLから除去
+const hash = new URLSearchParams(location.hash.slice(1));
+const oauthToken = hash.get('utterberg');
+if (oauthToken) {
+  attrs['utterberg-token'] = oauthToken;
+  history.replaceState(null, document.title, location.href.split('#')[0]);
+}
+
 // gather page attributes
 const url = new URL(location.href);
 const canonicalLink = document.querySelector(`link[rel='canonical']`) as HTMLLinkElement;

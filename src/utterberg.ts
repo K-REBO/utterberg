@@ -79,6 +79,17 @@ function saveCommentsCache(issueNum: number, comments: IssueComment[]) {
 
 async function bootstrap() {
   log('bootstrap start');
+
+  // Storage Partitioning対策: client.ts経由でURLパラメータに渡されたトークンを保存
+  if (page.utterbergToken) {
+    localStorage.setItem('utterberg-token', page.utterbergToken);
+    log('token from URL param (post-OAuth handoff)');
+    // iframeURLからトークンパラメータを除去
+    const u = new URL(location.href);
+    u.searchParams.delete('utterberg-token');
+    history.replaceState(null, '', u.href);
+  }
+
   await loadToken();
   log('token loaded');
 

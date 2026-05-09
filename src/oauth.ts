@@ -104,10 +104,13 @@ export async function handleOAuthCallback(code: string): Promise<void> {
   } catch (e) {
     console.error('[utterberg] token exchange error:', e);
   } finally {
-    // 元のページへ戻る（失敗時もリダイレクト）
-    window.location.href = (redirectBack && redirectBack !== 'null')
+    const dest = (redirectBack && redirectBack !== 'null')
       ? redirectBack
       : UTTERBERG_ORIGIN + '/';
+    // Storage Partitioning対策: トークンをURLハッシュで親ページに渡す
+    // client.ts がピックアップしてiframeのURLパラメータに変換する
+    const hash = token.value ? '#utterberg=' + encodeURIComponent(token.value) : '';
+    window.location.href = dest + hash;
   }
 }
 
